@@ -1,0 +1,370 @@
+﻿# A5:ER FORMAT:19
+# A5:ER ENCODING:UTF8
+# A5:ER Mk-1 Copyright © 2007 m.matsubara
+# A5:SQL Mk-2 Version 2.20.4 Copyright © 1997 - 2025 m.matsubara
+#  https://a5m2.mmatsubara.com
+
+[Manager]
+ProjectName=釣りマップ
+Author=
+MaxEntityRowShow=1000
+ReadOnlyRecommend=0
+Page=Main
+PageInfo="Main",2,"A3Landscape",$FFFFFF
+LogicalView=1
+DecodeDomain=0
+ViewModePageIndividually=1
+ViewMode=2
+ViewFormat=0
+UseNondependenceDashLine=0
+FontName=Tahoma
+FontSize=6
+PaperSize=A4Landscape
+HeaderLeft=
+HeaderCenter=
+HeaderRight=
+FooterLeft=
+FooterCenter=
+FooterRight=
+ShowPageoutRelation=1
+RDBMSType=7
+RDBMSTypeName=PostgreSQL
+DefaultPkName=%0:s_PKC
+DefaultPkIndexName=%0:s_PKI
+DefaultIndexName=%0:s_IX%1:d
+DefaultFkName=%0:s_FK%1:d
+SqlSeparator=0
+UpperCaseKeyword=0
+ShowTag=1
+ShowCommonAttributes=0
+BugFixEntityWidth=1
+
+[Entity]
+PName=FISHING_TRIP
+LName=釣行
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=100
+Top=100
+Field="釣行ID","FISHING_TRIP_ID","@VARCHAR","NOT NULL",0,"","",$FFFFFFFF,""
+Field="釣行日付","FISHING_TRIP_DATE","@DATE","NOT NULL",,"","",$FFFFFFFF,""
+Field="開始時間","START_TIME","@TIME","NOT NULL",,"","",$FFFFFFFF,""
+Field="終了時間","END_TIME","@TIME","NOT NULL",,"","",$FFFFFFFF,""
+Field="釣場ID","LOCATION_ID","@VARCHAR","NOT NULL",,"","",$FFFFFFFF,""
+Field="釣場混雑状況","LOCATION_CROWD","@VARCHAR",,,"","",$FFFFFFFF,""
+Field="備考","NOTE","@VARCHAR",,,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250915015326
+Position="Main",100,100,265,243
+ZOrder=1
+
+[Entity]
+PName=FISHING_RESULT
+LName=釣果
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=500
+Top=100
+Field="釣行ID","FISHING_TRIP_ID","","NOT NULL",0,"","",$FFFFFFFF,""
+Field="釣果連番","FISHING_RESULT_SEQ","","NOT NULL",1,"","",$FFFFFFFF,""
+Field="魚ID","FISH_ID","","NOT NULL",,"","",$FFFFFFFF,""
+Field="メンバーID","MEMBER_ID","","NOT NULL",,"","",$FFFFFFFF,""
+Field="釣り種別ID","釣り種別ID","","NOT NULL",,"","",$FFFFFFFF,""
+Field="道具ID","道具ID","",,,"","",$FFFFFFFF,""
+Field="仕掛けID","仕掛けID","",,,"","",$FFFFFFFF,""
+Field="餌ID","餌ID","",,,"","",$FFFFFFFF,""
+Field="水質ID","水質ID","",,,"","",$FFFFFFFF,""
+Field="ヒットタイム","ヒットタイム","",,,"","",$FFFFFFFF,""
+Field="潮状態","潮状態","",,,"","",$FFFFFFFF,""
+Field="天気","天気","",,,"","",$FFFFFFFF,""
+Field="水温","水温","",,,"","",$FFFFFFFF,""
+Field="風速","風速","",,,"","",$FFFFFFFF,""
+Field="風向き","風向き","",,,"","",$FFFFFFFF,""
+Field="波の高さ","波の高さ","",,,"","",$FFFFFFFF,""
+Field="深さ","深さ","",,,"","",$FFFFFFFF,""
+Field="ヒットパターン","ヒットパターン","",,,"","",$FFFFFFFF,""
+Field="備考","備考","",,,"","",$FFFFFFFF,""
+Field="サイズ","サイズ","",,,"","",$FFFFFFFF,""
+Field="リリース有無","リリース有無","",,,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250915014832
+Position="Main",500,100,265,562
+ZOrder=2
+
+[Relation]
+Entity1=FISHING_TRIP
+Entity2=FISHING_RESULT
+RelationType1=2
+RelationType2=3
+Fields1=FISHING_TRIP_ID
+Fields2=FISHING_TRIP_ID
+Cardinarity1=
+Cardinarity2=
+Position="MAIN",0,1268,8732,1228,R,R,""
+Dependence=1
+Caption=
+PName=
+ModifiedDateTime=20250915013600
+LineMode=0
+Bar1=127
+Bar2=873
+Bar3=123
+TermPos1=R
+TermPos2=R
+ZOrder=3
+
+[Entity]
+PName=FISHING_TRIP_MEMBER
+LName=釣行メンバー
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=100
+Top=450
+Field="釣行ID","FISHING_TRIP_ID","@VARCHAR","NOT NULL",0,"","",$FFFFFFFF,""
+Field="メンバー連番","MEMBER_SEQ","@INT","NOT NULL",1,"","",$FFFFFFFF,""
+Field="メンバーID","MEMBER_ID","@VARCHAR","NOT NULL",,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250915015345
+Position="Main",100,450,265,115
+ZOrder=4
+
+[Relation]
+Entity1=FISHING_TRIP
+Entity2=FISHING_TRIP_MEMBER
+RelationType1=2
+RelationType2=3
+Fields1=FISHING_TRIP_ID
+Fields2=FISHING_TRIP_ID
+Cardinarity1=
+Cardinarity2=
+Position="MAIN",0,915,9085,915,R,R,""
+Dependence=1
+Caption=
+PName=
+LineMode=0
+Bar1=92
+Bar2=908
+Bar3=92
+TermPos1=R
+TermPos2=R
+ZOrder=5
+
+[Entity]
+PName=FISH
+LName=魚マスタ
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=850
+Top=100
+Field="魚ID","FISH_ID","@VARCHAR",,0,"","",$FFFFFFFF,""
+Field="魚種","FISH_KIND","@VARCHAR","NOT NULL",,"","",$FFFFFFFF,""
+Field="画像パス","IMG_PATH","@VARCHAR","NOT NULL",,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250915015647
+Position="Main",850,100,265,115
+ZOrder=6
+
+[Relation]
+Entity1=FISHING_RESULT
+Entity2=FISH
+RelationType1=1
+RelationType2=3
+Fields1=FISHING_TRIP_ID,FISHING_RESULT_SEQ
+Fields2=
+Cardinarity1=
+Cardinarity2=
+Position="MAIN",0,901,9099,2181,R,R,""
+Dependence=0
+Caption=
+PName=
+LineMode=0
+Bar1=90
+Bar2=910
+Bar3=218
+TermPos1=R
+TermPos2=R
+ZOrder=7
+
+[Relation]
+Entity1=FISHING_RESULT
+Entity2=FISH
+RelationType1=1
+RelationType2=3
+Fields1=FISH_ID
+Fields2=FISH_ID
+Cardinarity1=
+Cardinarity2=
+Position="MAIN",0,901,9099,2181,R,R,""
+Dependence=0
+Caption=
+PName=
+ModifiedDateTime=20250915015730
+LineMode=0
+Bar1=90
+Bar2=910
+Bar3=218
+TermPos1=R
+TermPos2=R
+ZOrder=8
+
+[Entity]
+PName=SPOT
+LName=釣場マスタ
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=500
+Top=750
+Field="場所ID","SPOT_ID","@VARCHAR","NOT NULL",0,"","",$FFFFFFFF,""
+Field="名称","SPOT_NAME","@INT","NOT NULL",,"","",$FFFFFFFF,""
+Field="地域情報","SPOT_INFO","",,,"","",$FFFFFFFF,""
+Field="座標","POSITION","@VARCHAR","NOT NULL",,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250916224621
+Position="Main",500,750,265,115
+ZOrder=9
+
+[Entity]
+PName=MEMBER
+LName=メンバーマスタ
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=100
+Top=750
+Field="メンバーID","MEMBER_ID","@VARCHAR","NOT NULL",0,"","",$FFFFFFFF,""
+Field="名前","MEMBER_NAME","@INT","NOT NULL",,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250916224222
+Position="Main",100,750,265,115
+ZOrder=10
+
+[Entity]
+PName=FISHING_KIND
+LName=釣り種別マスタ
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=100
+Top=950
+Field="釣り種別ID","FISHING_KIND_ID","@VARCHAR","NOT NULL",0,"","",$FFFFFFFF,""
+Field="名前","MEMBER_NAME","@INT","NOT NULL",,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250916224315
+Position="Main",100,950,265,115
+ZOrder=11
+
+[Entity]
+PName=TACKLE
+LName=釣具マスタ
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=100
+Top=1150
+Field="釣具ID","TACKLE_ID","@VARCHAR","NOT NULL",0,"","",$FFFFFFFF,""
+Field="名前","MEMBER_NAME","@INT","NOT NULL",,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250916224436
+Position="Main",100,1150,265,115
+ZOrder=12
+
+[Entity]
+PName=RIG
+LName=仕掛けマスタ
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=100
+Top=1350
+Field="仕掛けID","RIG_ID","@VARCHAR","NOT NULL",0,"","",$FFFFFFFF,""
+Field="名前","MEMBER_NAME","@INT","NOT NULL",,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250916224559
+Position="Main",100,1350,265,115
+ZOrder=13
+
+[Entity]
+PName=BAIT
+LName=餌マスタ
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=500
+Top=950
+Field="餌ID","BAIT_ID","@VARCHAR","NOT NULL",0,"","",$FFFFFFFF,""
+Field="名前","MEMBER_NAME","@INT","NOT NULL",,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250916224711
+Position="Main",500,950,265,115
+ZOrder=14
+
+[Entity]
+PName=WATER_QUALITY
+LName=水質ID
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=500
+Top=1150
+Field="水質ID","WATER_QUALITY_ID","@VARCHAR","NOT NULL",0,"","",$FFFFFFFF,""
+Field="名前","MEMBER_NAME","@INT","NOT NULL",,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250916224801
+Position="Main",500,1150,265,115
+ZOrder=15
+
+[Entity]
+PName=SURROUNDING_ENVIRONMENT
+LName=周辺環境
+Comment=
+TableInnerOption=
+TableOption=
+Page=Main
+Left=500
+Top=1350
+Field="周辺環境ID","SURROUNDING_ENVIRONMENT_","@VARCHAR","NOT NULL",0,"","",$FFFFFFFF,""
+Field="名前","MEMBER_NAME","@INT","NOT NULL",,"","",$FFFFFFFF,""
+EffectMode=None
+Color=$000000
+BkColor=$FFFFFF
+ModifiedDateTime=20250916224927
+Position="Main",500,1350,265,115
+ZOrder=16
