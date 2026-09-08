@@ -51,6 +51,9 @@ GSIは次の1本を基本とする。
 | 11 | 釣り場マスタ | 快適性 | 自由記述の快適性に対するキーワード部分一致 | SCR-301 釣り場一覧 |
 | 12 | 釣り場マスタ | 駐車場有無 | 駐車場あり・なしの釣り場一覧 | SCR-301 釣り場一覧 |
 | 13 | メンバーマスタ | 名前 | メンバー名の部分一致 | SCR-002 検索 |
+| 14 | 釣果 | 釣果ID | `result_id` から釣果本体を一意に取得 | SCR-102 釣果詳細 |
+| 15 | 釣果 | 釣り場ID | 釣り場別の釣果一覧、新着順 | SCR-101 釣果一覧、SCR-303 釣り場詳細 |
+| 16 | 釣果 | 条件なし | 全釣果を新着順に取得 | SCR-001 ホーム、SCR-101 釣果一覧 |
 
 ### 確定要件
 
@@ -200,6 +203,26 @@ geohash
 周辺検索を追加する場合はGeohashのprefixを用いた検索アイテムを追加し、候補地点を取得後にアプリケーション側で実距離を判定する。
 現時点では周辺検索用GSIは作成しない。
 
+### 3.9 釣果詳細URLは `result_id` で解決する
+
+釣果詳細URLは画面設計 D-05 の `/catches/:id` を維持し、`:id` は `result_id` とする。
+釣果本体のPK・SKは `result_id` だけでは組み立てられないため、後述の「釣果ID検索用インデックスアイテム」を `GSI1_Search` からQueryし、取得した `target_pk` / `target_sk` で釣果本体を `GetItem` する。
+
+この経路は SCR-101、SCR-002、SCR-303 の各カード・リストから SCR-102 へ遷移する場合に共通して使用する。
+
+### 3.10 条件なしの新着釣果は月バケットを順に遡る
+
+SCR-001 の「最近の釣果」と SCR-101 の条件なし一覧は、`RESULT_MONTH#<YYYY-MM>` を当月から過去へ月単位でQueryし、各月を `ScanIndexForward = false` で取得する。`RESULT_ALL` の単一パーティションは作成しない。
+
+- 1レスポンスで返す釣果件数を `limit` とし、デフォルト20件、最大100件とする
+- 1回のAPIリクエストでQueryする月バケットは最大24か月とする
+- `limit` 件に達した時点、または保持データの最古月を処理した時点で打ち切る
+- 24か月を処理しても `limit` 件に達せず、さらに古いデータがある場合は、次に処理する年月と各Queryの `LastEvaluatedKey` を継続トークンに含める
+- クライアントは継続トークンがある限り追加取得できるため、検索可能期間そのものには上限を設けない
+- 初回取得で0件かつ継続トークンもない場合、SCR-001 / SCR-101 は「釣果はまだありません」を表示する
+
+保持データの最古月は後述の釣果月範囲管理アイテムの `earliest_month` として管理し、初回登録時またはより古い釣果の登録時に更新する。値が未設定の場合は釣果0件として扱う。これにより、データがない月を無期限に遡る処理を防ぐ。
+
 ## 4. 基本アイテム設計
 
 ## 4.1 釣行アイテム
@@ -263,6 +286,7 @@ GSI1PK = TRIP_DATE#2026-07-23
 | `entity_type` | `RESULT` |
 | `result_id` | 釣果ID |
 | `trip_id` | 釣行ID |
+| `location_id` | 釣り場ID。釣行の `location_id` を検索用に非正規化コピー |
 | `sequence_no` | 釣行内連番。画面表示用でありキーには使用しない |
 | `fish_id` | 魚ID |
 | `quantity` | 匹数。1以上の整数 |
@@ -317,6 +341,7 @@ AND begins_with(SK, "RESULT#")
   "entity_type": "RESULT",
   "result_id": "01K0RESULT001",
   "trip_id": "01K0TRIP001",
+  "location_id": "LOC-000001",
   "sequence_no": 1,
   "fish_id": "FISH-000001",
   "quantity": 5,
@@ -335,6 +360,61 @@ AND begins_with(SK, "RESULT#")
   "GSI1PK": "RESULT_FISH#FISH-000001",
   "GSI1SK": "2026-07-23T06:35:00+09:00#RESULT#01K0RESULT001"
 }
+```
+
+`location_id` は名称スナップショットではなく参照IDである。釣行の釣り場を変更する場合は、その釣行に属する全釣果本体の `location_id` と釣り場検索用インデックスアイテムも同一の更新処理で変更する。
+
+### 釣果ID検索用インデックスアイテム
+
+`/catches/:id` の `result_id` から釣果本体の完全なキーを解決する。
+
+| 属性 | 値・形式 |
+|---|---|
+| `PK` | `TRIP#<trip_id>` |
+| `SK` | `IDX#RESULT#<result_id>#SELF` |
+| `entity_type` | `RESULT_INDEX` |
+| `index_type` | `SELF` |
+| `result_id` | 釣果ID |
+| `catch_datetime` | 釣れた日時 |
+| `GSI1PK` | `RESULT_ID#<result_id>` |
+| `GSI1SK` | `<catch_datetime>#RESULT#<result_id>` |
+| `target_pk` | `TRIP#<trip_id>` |
+| `target_sk` | `RESULT#<catch_datetime>#<result_id>` |
+
+取得手順：
+
+1. `GSI1PK = RESULT_ID#<result_id>` を `Limit = 1` でQueryする
+2. 0件なら404を返す
+3. 取得した `target_pk` / `target_sk` で釣果本体を `GetItem` する
+
+`result_id` は全釣果で一意とし、登録時にIDの重複がないことをアプリケーションで保証する。
+
+### 釣り場検索用インデックスアイテム
+
+| 属性 | 値・形式 |
+|---|---|
+| `PK` | `TRIP#<trip_id>` |
+| `SK` | `IDX#RESULT#<result_id>#LOCATION` |
+| `entity_type` | `RESULT_INDEX` |
+| `index_type` | `LOCATION` |
+| `result_id` | 釣果ID |
+| `location_id` | 釣り場ID |
+| `fish_id` | 魚ID。組み合わせFilter用 |
+| `member_id` | メンバーID。組み合わせFilter用 |
+| `fishing_type_id` | 釣り種別ID。組み合わせFilter用 |
+| `catch_datetime` | 釣れた日時 |
+| `GSI1PK` | `RESULT_LOCATION#<location_id>` |
+| `GSI1SK` | `<catch_datetime>#RESULT#<result_id>` |
+| `target_pk` | 釣果本体のPK |
+| `target_sk` | 釣果本体のSK |
+
+SCR-303 の「最近の釣果」は次のQueryで新しい順に最大3件を取得する。SCR-101 の `spot` 絞り込みも同じキーを使用し、画面のページサイズでページングする。
+
+```text
+IndexName = GSI1_Search
+GSI1PK = RESULT_LOCATION#<location_id>
+ScanIndexForward = false
+Limit = 3
 ```
 
 ### メンバー検索用インデックスアイテム
@@ -388,6 +468,21 @@ AND begins_with(SK, "RESULT#")
 | `target_pk` | 釣果本体のPK |
 | `target_sk` | 釣果本体のSK |
 
+### 釣果月範囲管理アイテム
+
+条件なしの新着順取得を有限回で終了できるよう、釣果が存在する年月の範囲を1件の管理アイテムで保持する。このアイテムにはGSIキーを設定しない。
+
+| 属性 | 値・形式 |
+|---|---|
+| `PK` | `SYSTEM` |
+| `SK` | `RESULT_MONTH_RANGE` |
+| `entity_type` | `SYSTEM_METADATA` |
+| `earliest_month` | 最古の釣果年月 `YYYY-MM` |
+| `latest_month` | 最新の釣果年月 `YYYY-MM` |
+| `updated_at` | 更新日時 ISO 8601 |
+
+釣果登録・日時変更・削除により範囲が変わる場合はこのアイテムを更新する。境界月の最後の釣果を削除・移動した場合は、次の非空月を探索して境界を補正する。
+
 ### 釣果検索のQuery条件
 
 | 検索 | GSI1PK | GSI1SK条件 |
@@ -395,6 +490,7 @@ AND begins_with(SK, "RESULT#")
 | 魚別 | `RESULT_FISH#<fish_id>` | 期間指定なし、または `BETWEEN` |
 | メンバー別 | `RESULT_MEMBER#<member_id>` | 期間指定なし、または `BETWEEN` |
 | 釣り種別別 | `RESULT_TYPE#<type_id>` | 期間指定なし、または `BETWEEN` |
+| 釣り場別 | `RESULT_LOCATION#<location_id>` | 期間指定なし、または `BETWEEN` |
 | 指定月の全釣果 | `RESULT_MONTH#<YYYY-MM>` | 任意、または日時 `BETWEEN` |
 
 期間指定例：
@@ -410,7 +506,7 @@ AND GSI1SK BETWEEN
 期間を指定しない場合は `GSI1PK` のみでQueryし、ページングして全期間を取得可能とする。
 
 全釣果の日時検索で複数月をまたぐ場合は、対象月ごとにQueryを実行してアプリケーション側でマージする。
-検索期間の最大月数は設けない。
+明示的な期間検索の最大月数は設けない。条件なしの新着順取得は 3.10 の手順に従う。
 
 ## 4.3 魚マスタ
 
@@ -598,9 +694,12 @@ member_id = <member_id>
 |---|---|---|---|---|
 | 釣行本体 | `TRIP#id` | `META` | `TRIP_DATE#date` | `start_time#TRIP#id` |
 | 釣果本体 | `TRIP#trip_id` | `RESULT#datetime#id` | `RESULT_FISH#fish_id` | `datetime#RESULT#id` |
+| 釣果ID索引 | `TRIP#trip_id` | `IDX#RESULT#id#SELF` | `RESULT_ID#id` | `datetime#RESULT#id` |
+| 釣果釣り場索引 | `TRIP#trip_id` | `IDX#RESULT#id#LOCATION` | `RESULT_LOCATION#location_id` | `datetime#RESULT#id` |
 | 釣果メンバー索引 | `TRIP#trip_id` | `IDX#RESULT#id#MEMBER` | `RESULT_MEMBER#member_id` | `datetime#RESULT#id` |
 | 釣果種別索引 | `TRIP#trip_id` | `IDX#RESULT#id#TYPE` | `RESULT_TYPE#type_id` | `datetime#RESULT#id` |
 | 釣果月索引 | `TRIP#trip_id` | `IDX#RESULT#id#MONTH` | `RESULT_MONTH#YYYY-MM` | `datetime#RESULT#id` |
+| 釣果月範囲管理 | `SYSTEM` | `RESULT_MONTH_RANGE` | — | — |
 | 魚本体 | `FISH#id` | `META` | `FISH_ALL` | `normalized_name#FISH#id` |
 | 魚名N-gram索引 | `FISH#id` | `IDX#NAME_NGRAM#token` | `FISH_NAME_NGRAM#token` | `normalized_name#FISH#id` |
 | 魚生息地N-gram索引 | `FISH#id` | `IDX#HABITAT_NGRAM#token` | `FISH_HABITAT_NGRAM#token` | `normalized_name#FISH#id` |
@@ -678,22 +777,29 @@ GSI1SK = <location_name_normalized>#LOCATION#<location_id>
 ### 釣果登録時の書き込み例
 
 1. 釣果本体
-2. メンバー検索用アイテム
-3. 釣り種別検索用アイテム
-4. 月別日時検索用アイテム
-5. 高頻度の組み合わせ検索を採用している場合は、その合成キー索引
+2. 釣果ID検索用アイテム
+3. 釣り場検索用アイテム
+4. メンバー検索用アイテム
+5. 釣り種別検索用アイテム
+6. 月別日時検索用アイテム
+7. 必要な場合は釣果月範囲管理アイテム
+8. 高頻度の組み合わせ検索を採用している場合は、その合成キー索引
 
 これらを `TransactWriteItems` で一括登録する。
 
 ### 釣果更新時
 
-魚・メンバー・釣り種別・日時が変更された場合は、次を同一トランザクションで行う。
+魚・メンバー・釣り種別・釣り場・日時が変更された場合は、次を同一トランザクションで行う。
 
 1. 旧検索インデックスアイテムを削除
 2. 釣果本体を更新
 3. 新検索インデックスアイテムを登録
 
 `quantity` の変更だけであれば、検索キーに影響しないため釣果本体のみ更新する。
+
+釣行の `location_id` を変更する場合は、対象釣行に属する釣果を取得し、各釣果本体と `#LOCATION` 索引を更新する。1トランザクションの上限を超える場合は分割実行し、途中状態を外部へ公開しないための更新ステータスを釣行本体に持たせる。
+
+釣果削除時は、釣果本体と `#SELF`、`#LOCATION`、`#MEMBER`、`#TYPE`、`#MONTH` および採用済みの合成キー索引を同一トランザクションで削除する。
 
 ### マスタ更新時
 
@@ -842,17 +948,17 @@ DynamoDBで5テーブルに分割することも可能だが、次の理由か�
 
 ## 12. 参考資料
 
-- DynamoDB Query  
+- DynamoDB Query
   https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.html
-- Queryのキー条件式  
+- Queryのキー条件式
   https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.KeyConditionExpressions.html
-- QueryのFilterExpression  
+- QueryのFilterExpression
   https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Query.FilterExpression.html
-- Global Secondary Index  
+- Global Secondary Index
   https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.html
-- Sort keyのベストプラクティス  
+- Sort keyのベストプラクティス
   https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/bp-sort-keys.html
-- 複数属性の合成キーパターン  
+- 複数属性の合成キーパターン
   https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GSI.DesignPattern.MultiAttributeKeys.html
-- DynamoDB Transactions  
+- DynamoDB Transactions
   https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/transactions.html
