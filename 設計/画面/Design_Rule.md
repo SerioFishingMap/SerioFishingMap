@@ -88,6 +88,22 @@
     - 色
       - #DC2626 <span style="color: #DC2626;">■</span>
 
+- TextArea
+  - 用途
+    - 備考、説明などの複数行テキスト入力
+  - 最小高さ: 120px
+  - 幅: 親要素の100%
+  - 内側余白: 8px
+  - 枠線: 1px solid #D1D5DB <span style="color: #D1D5DB;">■</span>
+  - 角丸: 6px
+  - リサイズ: 縦方向のみ可
+  - フォーカス時
+    - border: 2px solid #2563EB <span style="color: #2563EB;">■</span>
+  - エラー時
+    - border: 2px solid #DC2626 <span style="color: #DC2626;">■</span>
+  - 必須項目
+    - TextBoxと同じルールでラベル横に表示
+
 ### テーブル
 - ヘッダー
   - 背景 #F1F5F9 <span style="color: #F1F5F9;">■</span>
